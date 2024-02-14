@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pen Input Website</title>
+  <script type="text/javascript" src="http://ajax.microsoft.com/ajax/jquery/jquery-1.5.min.js"></script>
+  <script type="text/javascript" src="inkml.js"></script>
+  <style>
+    #canvas {
+      border: 1px solid black;
+    }
+  </style>
+</head>
+<body>
+  <a id="link"></a>
+  <canvas id="canvas" width="500" height="300" data-inkml-src="ink1.inkml" data-inkml-ignorepressure="true"></canvas>
+  <button id="saveBtn">Save to CROHME InkML</button>
+  <button id="saveImageBtn">Save image</button>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', (event) => {
+      const canvas = document.getElementById('canvas');
+      // $(this).ready(function () {
+      //  $.get("ink1.inkml", {}, function (xml, textStatus, jqXHR) {
+      //         var ink = new Ink(xml);
+      //         // var inkml = ink.toInkML();
+      //         ink.draw(canvas, false);
+      //  })})
+      const saveBtn = document.getElementById('saveBtn');
+      const context = canvas.getContext('2d');
+      let isDrawing = false;
+      let inkData = [];
+
+      // Event listeners for pen input
+      canvas.addEventListener('mousedown', startDrawing);
+      canvas.addEventListener('mousemove', draw);
+      canvas.addEventListener('mouseup', stopDrawing);
+      canvas.addEventListener('mouseout', stopDrawing);
+
+      // Start drawing
+      function startDrawing(event) {
+        isDrawing = true;
+        const point = getCursorPosition(event);
+        inkData.push(point);
+      }
+
+      // Draw on the canvas
+      function draw(event) {
+        if (!isDrawing) return;
+        const point = getCursorPosition(event);
+        inkData.push(point);
+        context.lineWidth = 2;
+        context.lineCap = 'round';
+        context.strokeStyle = 'black';
+        context.beginPath();
+        context.moveTo(inkData[inkData.length - 2].x, inkData[inkData.length - 2].y);
+        context.lineTo(point.x, point.y);
+        context.stroke();
+        context.closePath();
+      }
+
+      // Stop drawing
+      function stopDrawing(event) {
+        isDrawing = false;
+      }
+
+      // Get cursor position
+      function getCursorPosition(event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        return { x, y };
+      }
+
+      // Save to CROHME InkML file
+      saveBtn.addEventListener('click', () => {
+        const crohmeInkMLData = createCrohmeInkML(inkData);
+        downloadFile(crohmeInkMLData, 'drawing.inkml');
+      });
+      
+      saveImageBtn.addEventListener('click', () => {
+        const canvas = document.getElementById('canvas');
+        // var dataURL = canvas.toDataURL('png');
+        
+
+        var link = document.getElementById('link');
+        link.setAttribute('download', 'MintyPaper.png');
+        link.setAttribute('href', canvas.toDataURL("image/png"));
+        link.click();
+
+      });
+      // Create CROHME InkML content
+      function createCrohmeInkML(data) {
+        const xmlHeader = '<?xml version="1.0" encoding="UTF-8"?>';
+        const inkMLHeader = '<ink xmlns="http://www.w3.org/2003/InkML">';
+        const annotationStart = '<annotation type="UI">\n\t<type>MathML</type>\n\t<encoding>Content-MathML</encoding>\n\t<content>';
+        const annotationEnd = '</content>\n</annotation>';
+        const traceGroupStart = '<traceGroup>';
+        const traceGroupEnd = '</traceGroup>';
+        const traceData = data.map(point => `${point.x},${point.y}`).join(' ');
+        const trace = `<trace>${traceData}</trace>`;
+        const crohmeInkML = `${xmlHeader}${inkMLHeader}${annotationStart}${annotationEnd}${traceGroupStart}${trace}${traceGroupEnd}</ink>`;
+        return crohmeInkML;
+      }
+
+      
+      // Download file
+      function downloadFile(content, filename) {
+        const element = document.createElement('a');
+        element.setAttribute('href', 'data:text/xml;charset=utf-8,' + encodeURIComponent(content));
+        element.setAttribute('download', filename);
+        element.style.display = 'none';
+        document.body.appendChild(element);
+        element.click();
+        document.body.removeChild(element);
+      }
+    });
+  </script>
+</body>
+</html>
